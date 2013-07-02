@@ -9,7 +9,7 @@ It is currently in a very rough, but working, state.  To use it, visit
 
     https://tornexto.appspot.com/auth?token=XXXXXX
 
-where XXXXXX is the token describe in the [API](https://github.com/krasnoukhov/theoldreader-api/blob/master/README.md#getting-a-token).  The application will store the token as a cookie in your browser.  **IMPORTANT PRIVACY NOTE:** This token will allow the application to do basically whatever it wants with your feeds.  You can review the code here, but there is no guarantee that the version running at tornexto.appspot.com is the same version you see here.  If this is a problem for you, then you can take this code and modify the app name in the app.yml file and the name of the Go source code and run your own Google App Engine app.
+where XXXXXX is the token describe in the [API](https://github.com/krasnoukhov/theoldreader-api/blob/master/README.md#getting-a-token). You might get a token by visiting [this link](https://theoldreader.com/reader/api/0/token). The application will store the token as a cookie in your browser.  **IMPORTANT PRIVACY NOTE:** This token will allow the application to do basically whatever it wants with your feeds.  You can review the code here, but there is no guarantee that the version running at tornexto.appspot.com is the same version you see here.  If this is a problem for you, then you can take this code and modify the app name in the app.yml file and the name of the Go source code and run your own Google App Engine app.
 
 Once you have registered your token, you can create a new bookmark with the URL
 
