@@ -8,6 +8,7 @@ import (
 	"appengine/urlfetch"
 	"encoding/json"
 	"strings"
+	"path"
 )
 
 func init() {
@@ -29,13 +30,22 @@ func auth(w http.ResponseWriter, r *http.Request) {
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
-	_, err := r.Cookie("auth")
+	auth_cookie, err := r.Cookie("auth")
 	if err != nil {
 		fmt.Fprintf(w, "Could not find authorization, please go to http://tornexto.appspot.com/auth?token=XXXXXXXXXXXXXXXXX where XXXXXXXXXXXXXXXXX is your token.")
 		return
 	}
+	auth_token := auth_cookie.Value
 
-	fmt.Fprintf(w, "token found, now make a bookmark that points to http://tornexto.appspot.com/next?folder=XXXXXXXX where XXXXXXXX is the folder you want to read from.")
+	fmt.Fprintf(w, "<html><body>token found, now make drag one or more of these links to your bookmark toolbar:<br /><ul>")
+	c := appengine.NewContext(r)
+	client := urlfetch.Client(c)
+	folders, _ := get_folders(c, client, auth_token)
+	for _, folder := range folders {
+		//FIXME: use the host name and protocol to bulld the URL rather than hard coding
+		fmt.Fprintf(w, fmt.Sprintf("<li><a href=\"https://tornexto.appspot.com/next?folder=%s\">%s</a>\n", folder, folder))
+	}
+	fmt.Fprintf(w, "</ul></body></html>")
 }
 
 func next(w http.ResponseWriter, r *http.Request) {
@@ -103,6 +113,41 @@ func mark_item_as_read(client *http.Client, id string, auth_token string) error 
 	return nil
 }
 
+func get_folders(c appengine.Context, client *http.Client, auth_token string) ([]string, error) {
+	url := "https://theoldreader.com/reader/api/0/tag/list?output=json"
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", auth_token))
+	ret := make([]string, 0)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return ret, err
+	}
+
+	defer resp.Body.Close()
+        json_bytes, _ := ioutil.ReadAll(resp.Body)
+
+	type Folder struct {
+		ID string
+	}
+
+	type Folders struct {
+		Tags []Folder
+	}
+
+	var tags Folders
+	json_err := json.Unmarshal(json_bytes, &tags)
+	if json_err != nil {
+		return ret, json_err
+	}
+
+	ret = make([]string, len(tags.Tags))
+	for index, folder := range tags.Tags {
+		ret[index] = path.Base(folder.ID)
+	}
+
+	return ret, nil
+}
 
 func get_url_for_item(client *http.Client, id string, auth_token string) (string, error) {
 	url := fmt.Sprintf("https://theoldreader.com/reader/api/0/stream/items/contents?output=json&i=%s", id)
