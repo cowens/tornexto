@@ -37,7 +37,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 	}
 	auth_token := auth_cookie.Value
 
-	fmt.Fprintf(w, "<html><body>token found, now make drag one or more of these links to your bookmark toolbar:<br /><ul>")
+	fmt.Fprintf(w, "<html><body>token found, now drag one or more of these links to your bookmark toolbar:<br /><ul>")
 	c := appengine.NewContext(r)
 	client := urlfetch.Client(c)
 	fmt.Fprintf(w, "<li><a href=\"/next\">(all folders)</a>\n")
