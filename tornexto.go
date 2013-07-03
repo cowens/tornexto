@@ -37,13 +37,13 @@ func home(w http.ResponseWriter, r *http.Request) {
 	}
 	auth_token := auth_cookie.Value
 
-	fmt.Fprintf(w, "<html><body>token found, now make drag one or more of these links to your bookmark toolbar:<br /><ul>")
+	fmt.Fprintf(w, "<html><body>token found, now drag one or more of these links to your bookmark toolbar:<br /><ul>")
 	c := appengine.NewContext(r)
 	client := urlfetch.Client(c)
+	fmt.Fprintf(w, "<li><a href=\"/next\">(all folders)</a>\n")
 	folders, _ := get_folders(c, client, auth_token)
 	for _, folder := range folders {
-		//FIXME: use the host name and protocol to bulld the URL rather than hard coding
-		fmt.Fprintf(w, fmt.Sprintf("<li><a href=\"https://tornexto.appspot.com/next?folder=%s\">%s</a>\n", folder, folder))
+		fmt.Fprintf(w, fmt.Sprintf("<li><a href=\"/next?folder=%s\">%s</a>\n", folder, folder))
 	}
 	fmt.Fprintf(w, "</ul></body></html>")
 }
@@ -59,11 +59,6 @@ func next(w http.ResponseWriter, r *http.Request) {
 
 	auth_token := auth_cookie.Value
 	folder     := r.FormValue("folder")
-		
-	if folder == "" {
-		fmt.Fprintf(w, "folder is a required parameter")
-		return
-	}
 
 	if auth_token == "" {
 		fmt.Fprintf(w, "bad token")
@@ -184,7 +179,11 @@ func get_url_for_item(client *http.Client, id string, auth_token string) (string
 }
 
 func get_next_id(client *http.Client, folder string, auth_token string) (string, error) {
-	url    := fmt.Sprintf("https://theoldreader.com/reader/api/0/stream/items/ids?output=json&xt=user/-/state/com.google/read&r=o&s=user/-/label/%s", folder)
+	filter := "user/-/label/" + folder
+	if folder == "" {
+		filter = "user/-/state/com.google/reading-list"
+	}
+	url    := "https://theoldreader.com/reader/api/0/stream/items/ids?output=json&xt=user/-/state/com.google/read&r=o&s=" + filter
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", auth_token))
 
@@ -209,12 +208,10 @@ func get_next_id(client *http.Client, folder string, auth_token string) (string,
 		return "", json_err
 	}
 
-
 	if len(items.ItemRefs) == 0 {
 		return "", nil
 	}
 
 	next_id := items.ItemRefs[0].ID
-
 	return next_id, nil
 }
