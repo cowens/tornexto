@@ -42,8 +42,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 	client := urlfetch.Client(c)
 	folders, _ := get_folders(c, client, auth_token)
 	for _, folder := range folders {
-		//FIXME: use the host name and protocol to bulld the URL rather than hard coding
-		fmt.Fprintf(w, fmt.Sprintf("<li><a href=\"https://tornexto.appspot.com/next?folder=%s\">%s</a>\n", folder, folder))
+		fmt.Fprintf(w, fmt.Sprintf("<li><a href=\"/next?folder=%s\">%s</a>\n", folder, folder))
 	}
 	fmt.Fprintf(w, "</ul></body></html>")
 }
