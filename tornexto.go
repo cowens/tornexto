@@ -18,7 +18,7 @@ func init() {
 }
 
 func nothing(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "no new items were found")
+	fmt.Fprintf(w, "<html><body>no new items were found<br /><br />There may be more items <a href=\"https://theoldreader.com\">in other folders</a>.</body></html>")
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
