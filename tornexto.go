@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"io/ioutil"
 	"appengine"
 	"appengine/urlfetch"
@@ -183,7 +184,7 @@ func get_next_id(client *http.Client, folder string, auth_token string) (string,
 	if folder == "" {
 		filter = "user/-/state/com.google/reading-list"
 	}
-	url    := "https://theoldreader.com/reader/api/0/stream/items/ids?output=json&xt=user/-/state/com.google/read&r=o&s=" + filter
+	url    := "https://theoldreader.com/reader/api/0/stream/items/ids?output=json&xt=user/-/state/com.google/read&r=o&s=" + url.QueryEscape(filter)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", auth_token))
 
