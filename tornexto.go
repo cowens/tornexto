@@ -20,7 +20,22 @@ func init() {
 }
 
 func nothing(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "<html><body>no new items were found<br /><br />There may be more items <a href=\"https://theoldreader.com\">in other folders</a>.</body></html>")
+	folder := r.FormValue("folder")
+	if folder == "" {
+		folder = "your folders"
+	}
+	fmt.Fprint(w, `
+		<html>
+			<body>
+				no new items were found in ` + folder + `
+				<br />
+				<br />
+				There may be more items <a href=\"https://theoldreader.com\">in
+				other folders</a>.  You could also try creating <a href="/home">
+				a bookmarklet for a different folder</a>.
+			</body>
+		</html>
+	`)
 }
 
 func auth(w http.ResponseWriter, r *http.Request) {
@@ -51,20 +66,6 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func write_error(w http.ResponseWriter) {
-	fmt.Fprint(w, `
-		<html>
-			<body>
-				You have an invalid token.  If you are logged in to
-				<a href=https://theoldreader.com>The Old Reader</a>, 
-				this <a href="https://theoldreader.com/reader/api/0/token">
-				link</a> may list your token.  When you have your token go
-				to <a href="/auth">the authentication page</a> and enter it
-				there.
-			</body>
-		</html>`)
-}
-
 func home(w http.ResponseWriter, r *http.Request) {
 	auth_cookie, _ := r.Cookie("auth")
 	auth_token     := auth_cookie.Value
@@ -77,7 +78,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "<html><body>token found, now drag one or more of these links to your bookmark toolbar:<br /><ul>")
+	fmt.Fprintf(w, "<html><body>Drag one or more of these links to your bookmark toolbar:<br /><ul>")
 	fmt.Fprintln(w, `<li><a href="/next">(all folders)</a>`)
 	folders, _ := get_folders(c, client, auth_token)
 	for _, folder := range folders {
@@ -97,14 +98,15 @@ func next(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	next_id, err := get_next_id(client, r.FormValue("folder"), auth_token)
+	folder := r.FormValue("folder")
+	next_id, err := get_next_id(client, folder, auth_token)
 	if err != nil {
 		fmt.Fprintf(w, err.Error())
 		return
 	}
 
 	if next_id == "" {
-		http.Redirect(w, r, "/nothing", http.StatusFound)
+		http.Redirect(w, r, "/nothing?folder" + folder, http.StatusFound)
 		return
 	}
 
