@@ -41,10 +41,10 @@ func home(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "<html><body>token found, now drag one or more of these links to your bookmark toolbar:<br /><ul>")
 	c := appengine.NewContext(r)
 	client := urlfetch.Client(c)
-	fmt.Fprintf(w, "<li><a href=\"/next\">(all folders)</a>\n")
+	fmt.Fprintln(w, `<li><a href="/next">(all folders)</a>`)
 	folders, _ := get_folders(c, client, auth_token)
 	for _, folder := range folders {
-		fmt.Fprintf(w, fmt.Sprintf("<li><a href=\"/next?folder=%s\">%s</a>\n", folder, folder))
+		fmt.Fprintf(w, `<li><a href="/next?folder=` + folder + `">` + folder + "</a>\n")
 	}
 	fmt.Fprintf(w, "</ul></body></html>")
 }
@@ -95,9 +95,9 @@ func next(w http.ResponseWriter, r *http.Request) {
 
 func mark_item_as_read(client *http.Client, id string, auth_token string) error {
 	url := "https://theoldreader.com/reader/api/0/edit-tag"
-	args := fmt.Sprintf("a=user/-/state/com.google/read&i=%s", id)
+	args := "a=user/-/state/com.google/read&i=" + id
 	req, _ := http.NewRequest("POST", url, strings.NewReader(args))
-	req.Header.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", auth_token))
+	req.Header.Set("Authorization", "GoogleLogin auth=" + auth_token)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; param=value")
 
 	resp, err := client.Do(req)
@@ -112,7 +112,7 @@ func mark_item_as_read(client *http.Client, id string, auth_token string) error 
 func get_folders(c appengine.Context, client *http.Client, auth_token string) ([]string, error) {
 	url := "https://theoldreader.com/reader/api/0/tag/list?output=json"
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", auth_token))
+	req.Header.Set("Authorization", "GoogleLogin auth=" + auth_token)
 	ret := make([]string, 0)
 
 	resp, err := client.Do(req)
@@ -146,9 +146,9 @@ func get_folders(c appengine.Context, client *http.Client, auth_token string) ([
 }
 
 func get_url_for_item(client *http.Client, id string, auth_token string) (string, error) {
-	url := fmt.Sprintf("https://theoldreader.com/reader/api/0/stream/items/contents?output=json&i=%s", id)
+	url := "https://theoldreader.com/reader/api/0/stream/items/contents?output=json&i=" + id
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", auth_token))
+	req.Header.Set("Authorization", "GoogleLogin auth=" + auth_token)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -186,7 +186,7 @@ func get_next_id(client *http.Client, folder string, auth_token string) (string,
 	}
 	url    := "https://theoldreader.com/reader/api/0/stream/items/ids?output=json&xt=user/-/state/com.google/read&r=o&s=" + url.QueryEscape(filter)
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", fmt.Sprintf("GoogleLogin auth=%s", auth_token))
+	req.Header.Set("Authorization", "GoogleLogin auth=" + auth_token)
 
 	resp, err := client.Do(req)
 	if err != nil {
