@@ -25,9 +25,20 @@ func nothing(w http.ResponseWriter, r *http.Request) {
 
 func auth(w http.ResponseWriter, r *http.Request) {
 	auth_token := r.FormValue("token")
-	auth_cookie := http.Cookie{ Name: "auth", Value: auth_token, MaxAge: 0 }
-	http.SetCookie(w, &auth_cookie)
-	http.Redirect(w, r, "/home", http.StatusFound)
+	if auth_token != "" {
+		auth_cookie := http.Cookie{ Name: "auth", Value: auth_token, MaxAge: 0 }
+		http.SetCookie(w, &auth_cookie)
+		http.Redirect(w, r, "/home", http.StatusFound)
+	}
+	fmt.Fprint(w, `
+		<html>
+			<body>
+				That is an invalid token.  If you are logged in, 
+				this <a href="https://theoldreader.com/reader/api/0/token">
+				link</a> may list your token.
+			</body>
+		</html>`)
+	return
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
