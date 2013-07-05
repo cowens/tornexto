@@ -25,6 +25,8 @@ func nothing(w http.ResponseWriter, r *http.Request) {
 
 func auth(w http.ResponseWriter, r *http.Request) {
 	auth_token := r.FormValue("token")
+	error_text := r.FormValue("err")
+
 	if auth_token != "" {
 		auth_cookie := http.Cookie{ Name: "auth", Value: auth_token, MaxAge: 0 }
 		http.SetCookie(w, &auth_cookie)
@@ -32,26 +34,50 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprint(w, `
 		<html>
-			<body>
-				That is an invalid token.  If you are logged in, 
+			<body>` + error_text + `
+				<form method="GET" action="/auth">
+					<label for="token">Enter token here:</label>
+					<input id="token" type="password" name="token"></input>
+					<input type="submit"></input>
+				</form>
+				If you do not know your token and you are logged in to
+				<a href=https://theoldreader.com>The Old Reader</a>, 
 				this <a href="https://theoldreader.com/reader/api/0/token">
-				link</a> may list your token.
+				link</a> may list your token.  When you have your token come
+				back to this page and enter it here.
+
 			</body>
 		</html>`)
 	return
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
-	auth_cookie, err := r.Cookie("auth")
-	if err != nil {
-		fmt.Fprintf(w, "Could not find authorization, please go to http://tornexto.appspot.com/auth?token=XXXXXXXXXXXXXXXXX where XXXXXXXXXXXXXXXXX is your token.")
-		return
-	}
-	auth_token := auth_cookie.Value
+func write_error(w http.ResponseWriter) {
+	fmt.Fprint(w, `
+		<html>
+			<body>
+				You have an invalid token.  If you are logged in to
+				<a href=https://theoldreader.com>The Old Reader</a>, 
+				this <a href="https://theoldreader.com/reader/api/0/token">
+				link</a> may list your token.  When you have your token go
+				to <a href="/auth">the authentication page</a> and enter it
+				there.
+			</body>
+		</html>`)
+}
 
-	fmt.Fprintf(w, "<html><body>token found, now drag one or more of these links to your bookmark toolbar:<br /><ul>")
+func home(w http.ResponseWriter, r *http.Request) {
+	auth_cookie, _ := r.Cookie("auth")
+	auth_token     := auth_cookie.Value
+
 	c := appengine.NewContext(r)
 	client := urlfetch.Client(c)
+
+	if !verify_token(client, auth_token) {
+		http.Redirect(w, r, `/auth?err=bad+token`, http.StatusFound)
+		return
+	}
+
+	fmt.Fprintf(w, "<html><body>token found, now drag one or more of these links to your bookmark toolbar:<br /><ul>")
 	fmt.Fprintln(w, `<li><a href="/next">(all folders)</a>`)
 	folders, _ := get_folders(c, client, auth_token)
 	for _, folder := range folders {
@@ -61,29 +87,17 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 func next(w http.ResponseWriter, r *http.Request) {
-	c := appengine.NewContext(r)
-	auth_cookie, err := r.Cookie("auth")
+	auth_cookie, _ := r.Cookie("auth")
+	auth_token     := auth_cookie.Value
+	c              := appengine.NewContext(r)
+	client         := urlfetch.Client(c)
 
-	if err != nil {
-		fmt.Fprintf(w, "Could not find authorization, please go to http://tornexto.appspot.com/auth?token=XXXXXXXXXXXXXXXXX where XXXXXXXXXXXXXXXXX is your token.")
+	if !verify_token(client, auth_token) {
+		http.Redirect(w, r, `/auth?err=bad+token`, http.StatusFound)
 		return
 	}
 
-	auth_token := auth_cookie.Value
-	folder     := r.FormValue("folder")
-
-	if auth_token == "" {
-		fmt.Fprintf(w, "bad token")
-		return
-	}
-	
-	client := urlfetch.Client(c)
-	if err != nil {
-		fmt.Fprintf(w, err.Error())
-		return
-	}
-
-	next_id, err := get_next_id(client, folder, auth_token)
+	next_id, err := get_next_id(client, r.FormValue("folder"), auth_token)
 	if err != nil {
 		fmt.Fprintf(w, err.Error())
 		return
@@ -118,6 +132,22 @@ func mark_item_as_read(client *http.Client, id string, auth_token string) error 
 
 	defer resp.Body.Close()
 	return nil
+}
+
+func verify_token(client *http.Client, auth_token string) bool {
+	url := "https://theoldreader.com/reader/api/0/token"
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Authorization", "GoogleLogin auth=" + auth_token)
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+
+        token_bytes, _ := ioutil.ReadAll(resp.Body)
+	fetched_token  := string(token_bytes)
+
+	return fetched_token == auth_token
 }
 
 func get_folders(c appengine.Context, client *http.Client, auth_token string) ([]string, error) {
