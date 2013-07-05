@@ -106,7 +106,7 @@ func next(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if next_id == "" {
-		http.Redirect(w, r, "/nothing?folder" + folder, http.StatusFound)
+		http.Redirect(w, r, "/nothing?folder=" + folder, http.StatusFound)
 		return
 	}
 
