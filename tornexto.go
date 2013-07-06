@@ -30,7 +30,7 @@ func nothing(w http.ResponseWriter, r *http.Request) {
 				no new items were found in ` + folder + `
 				<br />
 				<br />
-				There may be more items <a href=\"https://theoldreader.com\">in
+				There may be more items <a href="https://theoldreader.com">in
 				other folders</a>.  You could also try creating <a href="/home">
 				a bookmarklet for a different folder</a>.
 			</body>
