@@ -5,14 +5,28 @@ however, it is missing a vital feature that Google Reader had: a URL you could h
 to get the next item from a folder.  This Go based Google App Engine application uses
 the API for The Old Reader to provide that feature.
 
-It is currently in a very rough, but working, state.  To use it, visit
+It is currently in a very rough, but working, state.  To use it, you must first
+provide your [The Old Reader API token](https://theoldreader.com/reader/api/0/token)
+to it.  This token can be retrieved from the link above if you are already
+logged in to The Old Reader (you may have to set a password if you are using
+Google to sign in).  Once you have your token, you must visit the [tornexto
+auth page](https://tornexto.appspot.com/auth) and enter it into the form there.
+Doing this will store a cookie in your web browser containing the token.
 
-    https://tornexto.appspot.com/auth?token=XXXXXX
-
-where XXXXXX is the token describe in the [API](https://github.com/krasnoukhov/theoldreader-api/blob/master/README.md#getting-a-token). You might get a token by visiting [this link](https://theoldreader.com/reader/api/0/token). The application will store the token as a cookie in your browser.  **IMPORTANT PRIVACY NOTE:** This token will allow the application to do basically whatever it wants with your feeds.  You can review the code here, but there is no guarantee that the version running at tornexto.appspot.com is the same version you see here.  If this is a problem for you, then you can take this code and modify the app name in the app.yml file and the name of the Go source code and run your own Google App Engine app.
+** IMPORTANT PRIVACY NOTE: **
+Providing this token will allow tornexto to anything it
+wants with you The Old Reader account (read items, mark items as read, etc).
+Currently it only uses this permission to ensure you have a valid token, fetch
+a list of your folders, fetch a list of unread items in a folder you specify,
+and mark items as read when they have been served to you.  If this is
+unacceptable to you, it is possible to set up your own version of tornexto
+running in Google App Engine.  At a later date, detailed instructions will be
+provided in this document on how to do that.
 
 Once you have registered your token, you can create a new bookmark with the URL
+by dragging one of the links on the [tornexto home page](https://tornexto.appspot.com/home)
+to your bookmark toolbar or by adding a bookmark to 
 
     https://tornext.appspot.com/next?folder=XXXXXX
 
-where XXXXXX is the name of one of your folders.  In the near future I plan on making it easier to create these bookmarks by listing the folders and feeds you have available, but my first priority was to get something working at all.
+where XXXXXX is the name of one of your folders.
