@@ -14,6 +14,7 @@ import (
 
 func init() {
 	http.HandleFunc("/auth", auth)
+	http.HandleFunc("/", home)
 	http.HandleFunc("/home", home)
 	http.HandleFunc("/next", next)
 	http.HandleFunc("/nothing", nothing)
@@ -66,20 +67,34 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
+func get_client(w http.ResponseWriter, r *http.Request) (*http.Client, string) {
 	auth_cookie, _ := r.Cookie("auth")
-	auth_token     := auth_cookie.Value
 
-	c := appengine.NewContext(r)
-	client := urlfetch.Client(c)
-
+	if auth_cookie == nil {
+		http.Redirect(w, r, `/auth`, http.StatusFound)
+		return nil, ""
+	}
+		
+	auth_token := auth_cookie.Value
+	c          := appengine.NewContext(r)
+	client     := urlfetch.Client(c)
+	
 	if !verify_token(client, auth_token) {
 		http.Redirect(w, r, `/auth?err=bad+token`, http.StatusFound)
-		return
+		return nil, ""
 	}
+
+	return client, auth_token
+}
+
+func home(w http.ResponseWriter, r *http.Request) {
+	client, auth_token := get_client(w, r)
+	if client == nil { return }
 
 	fmt.Fprintf(w, "<html><body>Drag one or more of these links to your bookmark toolbar:<br /><ul>")
 	fmt.Fprintln(w, `<li><a href="/next">(all folders)</a>`)
+
+	c          := appengine.NewContext(r)
 	folders, _ := get_folders(c, client, auth_token)
 	for _, folder := range folders {
 		fmt.Fprintf(w, `<li><a href="/next?folder=` + folder + `">` + folder + "</a>\n")
@@ -88,15 +103,8 @@ func home(w http.ResponseWriter, r *http.Request) {
 }
 
 func next(w http.ResponseWriter, r *http.Request) {
-	auth_cookie, _ := r.Cookie("auth")
-	auth_token     := auth_cookie.Value
-	c              := appengine.NewContext(r)
-	client         := urlfetch.Client(c)
-
-	if !verify_token(client, auth_token) {
-		http.Redirect(w, r, `/auth?err=bad+token`, http.StatusFound)
-		return
-	}
+	client, auth_token := get_client(w, r)
+	if client == nil { return }
 
 	folder := r.FormValue("folder")
 	next_id, err := get_next_id(client, folder, auth_token)
