@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"strings"
 	"path"
+	"time"
 )
 
 func init() {
@@ -18,6 +19,7 @@ func init() {
 	http.HandleFunc("/home", home)
 	http.HandleFunc("/next", next)
 	http.HandleFunc("/nothing", nothing)
+	http.HandleFunc("/logout", logout)
 }
 
 func nothing(w http.ResponseWriter, r *http.Request) {
@@ -25,10 +27,20 @@ func nothing(w http.ResponseWriter, r *http.Request) {
 	if folder == "" {
 		folder = "your folders"
 	}
+	client, auth_token := get_client(w, r)
+	if client == nil {
+		http.Redirect(w, r, `/auth`, http.StatusFound)
+		return
+	}
+	name := get_name(client, auth_token)
 	fmt.Fprint(w, `
 		<html>
 			<body>
-				no new items were found in ` + folder + `
+				You are logged in as ` + name + `.  If this is not you, then you can
+				<a href="/logout">logout</a>.
+				<br />
+				<br />
+				No new items were found in ` + folder + `
 				<br />
 				<br />
 				There may be more items <a href="https://theoldreader.com">in
@@ -44,10 +56,10 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	error_text := r.FormValue("err")
 
 	if auth_token != "" {
-		auth_cookie := http.Cookie{ Name: "auth", Value: auth_token, MaxAge: 0 }
-		http.SetCookie(w, &auth_cookie)
+		set_cookie(w, auth_token)
 		http.Redirect(w, r, "/home", http.StatusFound)
 	}
+
 	fmt.Fprint(w, `
 		<html>
 			<body>` + error_text + `
@@ -74,24 +86,41 @@ func get_client(w http.ResponseWriter, r *http.Request) (*http.Client, string) {
 		http.Redirect(w, r, `/auth`, http.StatusFound)
 		return nil, ""
 	}
-		
+	
 	auth_token := auth_cookie.Value
 	c          := appengine.NewContext(r)
 	client     := urlfetch.Client(c)
-	
+
 	if !verify_token(client, auth_token) {
 		http.Redirect(w, r, `/auth?err=bad+token`, http.StatusFound)
 		return nil, ""
 	}
 
+	set_cookie(w, auth_token);
+	
 	return client, auth_token
+}
+
+func logout(w http.ResponseWriter, r *http.Request) {
+	set_cookie(w, "")
+	http.Redirect(w, r, "/auth", http.StatusFound)
 }
 
 func home(w http.ResponseWriter, r *http.Request) {
 	client, auth_token := get_client(w, r)
 	if client == nil { return }
 
-	fmt.Fprintf(w, "<html><body>Drag one or more of these links to your bookmark toolbar:<br /><ul>")
+	name := get_name(client, auth_token)
+
+	fmt.Fprintf(w, `
+<html>
+	<body>
+		You are logged in as ` + name + `.  If this is not you, then you can
+		<a href="/logout">logout</a>.
+		<br /><br />
+		Drag one or more of these links to your bookmark toolbar:<br />
+		<ul>
+	`)
 	fmt.Fprintln(w, `<li><a href="/next">(all folders)</a>`)
 
 	c          := appengine.NewContext(r)
@@ -128,6 +157,29 @@ func next(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, url, http.StatusFound)
 }
 
+func get_name(client *http.Client, auth_token string) string {
+	url := "https://theoldreader.com/reader/api/0/user-info?output=json"
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Authorization", "GoogleLogin auth=" + auth_token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return ""
+	}
+
+	defer resp.Body.Close()
+        json_bytes, _ := ioutil.ReadAll(resp.Body)
+
+
+	var user_obj map[string]interface{}
+	json_err := json.Unmarshal(json_bytes, &user_obj)
+	if json_err != nil {
+		return ""
+	}
+
+	return user_obj["userName"].(string)
+}
+
 func mark_item_as_read(client *http.Client, id string, auth_token string) error {
 	url := "https://theoldreader.com/reader/api/0/edit-tag"
 	args := "a=user/-/state/com.google/read&i=" + id
@@ -144,7 +196,21 @@ func mark_item_as_read(client *http.Client, id string, auth_token string) error 
 	return nil
 }
 
+func set_cookie(w http.ResponseWriter, auth_token string) {
+	auth_cookie := http.Cookie{
+		Name: "auth",
+		//expires in roughly a year
+		Expires: time.Now().Add(time.Hour * time.Duration(24*365)),
+		Value: auth_token,
+		MaxAge: 0,
+	}
+	http.SetCookie(w, &auth_cookie)
+}
+
 func verify_token(client *http.Client, auth_token string) bool {
+	if auth_token == "" {
+		return false
+	}
 	url := "https://theoldreader.com/reader/api/0/token"
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "GoogleLogin auth=" + auth_token)
