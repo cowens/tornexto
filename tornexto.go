@@ -14,12 +14,17 @@ import (
 )
 
 func init() {
+	// http.HandleFunc("/", down);
 	http.HandleFunc("/auth", auth)
 	http.HandleFunc("/", home)
 	http.HandleFunc("/home", home)
 	http.HandleFunc("/next", next)
 	http.HandleFunc("/nothing", nothing)
 	http.HandleFunc("/logout", logout)
+}
+
+func down(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, `http://status.theoldreader.com`, http.StatusFound)
 }
 
 func nothing(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +94,12 @@ func get_client(w http.ResponseWriter, r *http.Request) (*http.Client, string) {
 	
 	auth_token := auth_cookie.Value
 	c          := appengine.NewContext(r)
-	client     := urlfetch.Client(c)
+	client     := &http.Client{
+		Transport: &urlfetch.Transport{
+			Context: c,
+			Deadline: 15 * time.Second,
+		},
+	}
 
 	if !verify_token(client, auth_token) {
 		http.Redirect(w, r, `/auth?err=bad+token`, http.StatusFound)
